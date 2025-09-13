@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Live Display Text with Time</title>
+  <title>Live Display Text with Notification Sound</title>
   <style>
     body {
       margin: 0;
@@ -131,7 +131,9 @@
       const defaultText = document.getElementById('defaultText');
       const timeCenter = document.getElementById('timeCenter');
       const bouncingText = document.getElementById('bouncingText');
+      const notificationAudio = new Audio('Notification sound.mp3');
 
+      let previousText = null;
       let x = 100;
       let y = 100;
       let dx = 0.8;
@@ -187,6 +189,7 @@
         timeTopRight.innerText = currentTime;
         timeCenter.innerText = currentTime;
       }
+
       setInterval(refreshTime, 1000);
       refreshTime();
 
@@ -199,6 +202,15 @@
           timeCenter.style.display = 'none';
           bouncingText.style.display = 'none';
           displayTextEl.innerText = val;
+
+          if (previousText !== val) {
+            // Play notification sound on new text
+            notificationAudio.play().catch(e => {
+              // Ignore if playback prevented (e.g. user hasn't interacted yet)
+              console.log("Audio play prevented:", e);
+            });
+          }
+          previousText = val;
           cancelAnimationFrame(bounceId);
           bounceId = null;
         } else {
@@ -210,6 +222,7 @@
           if (!bounceId) {
             bounceId = requestAnimationFrame(bounce);
           }
+          previousText = null;
         }
       });
     };
