@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live Display Text</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #0a1f44; /* dark blue */
+      color: #e0e7ff; /* light blue */
+      overflow: hidden;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      user-select: none;
+      position: relative;
+    }
+    #displayText {
+      font-size: 48px;
+      font-weight: 600;
+      padding: 30px 50px;
+      border: 3px solid #4169e1; /* royal blue */
+      border-radius: 12px;
+      background-color: #112a67;
+      box-shadow: 0 0 20px #3a59b3;
+      max-width: 90%;
+      white-space: pre-wrap;
+      text-align: center;
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+    #defaultText {
+      position: absolute;
+      top: 0;
+      left: 0;
+      font-weight: 700;
+      color: #aacbff;
+      cursor: default;
+      user-select: none;
+    }
+    #defaultText #dhs {
+      font-size: 72px;
+      line-height: 1;
+      margin-bottom: 0;
+      text-align: center;
+    }
+    #defaultText #robotics {
+      font-size: 48px;
+      margin-top: 0;
+      letter-spacing: 4px;
+      text-align: center;
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyA_oNDJim9XwoqPazv-566pEAoTK_my4Hg",
+      authDomain: "dhsr-live-display.firebaseapp.com",
+      projectId: "dhsr-live-display",
+      storageBucket: "dhsr-live-display.firebasestorage.app",
+      messagingSenderId: "749655535179",
+      appId: "1:749655535179:web:055d39389c0ae9247da7ce"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app, "https://dhsr-live-display-default-rtdb.europe-west1.firebasedatabase.app");
+    const textRef = ref(db, 'sharedText');
+
+    window.onload = () => {
+      const displayTextEl = document.getElementById('displayText');
+      const defaultTextEl = document.getElementById('defaultText');
+
+      let x = 100;
+      let y = 100;
+      let dx = 0.8;  // slower horizontal speed
+      let dy = 0.5;  // slower vertical speed
+      let bounceId;
+
+      function bounce() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const rect = defaultTextEl.getBoundingClientRect();
+        const elemWidth = rect.width;
+        const elemHeight = rect.height;
+
+        x += dx;
+        y += dy;
+
+        if (x + elemWidth > width || x < 0) {
+          dx = -dx;
+          x += dx;
+        }
+        if (y + elemHeight > height || y < 0) {
+          dy = -dy;
+          y += dy;
+        }
+
+        defaultTextEl.style.left = x + 'px';
+        defaultTextEl.style.top = y + 'px';
+
+        bounceId = requestAnimationFrame(bounce);
+      }
+
+      onValue(textRef, (snapshot) => {
+        const val = snapshot.val();
+        if (val && val.trim().length > 0) {
+          displayTextEl.style.display = 'block';
+          defaultTextEl.style.display = 'none';
+          displayTextEl.innerText = val;
+          if (bounceId) {
+            cancelAnimationFrame(bounceId);
+            bounceId = null;
+          }
+        } else {
+          displayTextEl.style.display = 'none';
+          defaultTextEl.style.display = 'block';
+          if (!bounceId) {
+            bounceId = requestAnimationFrame(bounce);
+          }
+        }
+      });
+    };
+  </script>
+</head>
+<body>
+  <div id="displayText">(Loading...)</div>
+
+  <div id="defaultText">
+    <div id="dhs">DHS</div>
+    <div id="robotics">Robotics</div>
+  </div>
+</body>
+</html>
