@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Live Display Text</title>
+  <title>Live Display Text with Time</title>
   <style>
     body {
       margin: 0;
@@ -10,8 +10,8 @@
       overflow: hidden;
       height: 100vh;
       font-family: Arial, sans-serif;
-      user-select: none;
       position: relative;
+      user-select: none;
     }
     #displayText {
       font-size: 48px;
@@ -24,32 +24,80 @@
       max-width: 90%;
       white-space: pre-wrap;
       text-align: center;
-      display: none;
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      display: none;
+      z-index: 10;
+    }
+    #timeTopRight {
+      position: fixed;
+      top: 10px;
+      right: 20px;
+      font-size: 20px;
+      font-weight: 600;
+      color: #aacbff;
+      user-select: none;
+      z-index: 20;
+      font-family: 'Courier New', Courier, monospace;
     }
     #defaultText {
       position: absolute;
-      top: 0;
-      left: 0;
+      top: 10px;
+      left: 20px;
       font-weight: 700;
       color: #aacbff;
       cursor: default;
       user-select: none;
+      z-index: 15;
+      font-family: Arial, sans-serif;
+      text-align: left;
     }
     #defaultText #dhs {
+      font-size: 48px;
+      line-height: 1;
+      margin-bottom: 0;
+    }
+    #defaultText #robotics {
+      font-size: 32px;
+      margin-top: 0;
+      letter-spacing: 4px;
+    }
+    #timeCenter {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 80px;
+      font-weight: 700;
+      color: #aacbff;
+      font-family: 'Courier New', Courier, monospace;
+      user-select: none;
+      z-index: 5;
+      display: none;
+      pointer-events: none;
+    }
+    #bouncingText {
+      position: absolute;
+      font-weight: 700;
+      color: #aacbff;
+      cursor: default;
+      user-select: none;
+      z-index: 10;
+      font-family: Arial, sans-serif;
+      text-align: left;
+      white-space: nowrap;
+    }
+    #bouncingText #dhsBounce {
       font-size: 72px;
       line-height: 1;
       margin-bottom: 0;
-      text-align: center;
     }
-    #defaultText #robotics {
+    #bouncingText #roboticsBounce {
       font-size: 48px;
       margin-top: 0;
       letter-spacing: 4px;
-      text-align: center;
     }
   </style>
   <script type="module">
@@ -69,22 +117,35 @@
     const db = getDatabase(app, "https://dhsr-live-display-default-rtdb.europe-west1.firebasedatabase.app");
     const textRef = ref(db, 'sharedText');
 
+    function updateTime() {
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      return `${hh}:${mm}:${ss}`;
+    }
+
     window.onload = () => {
       const displayTextEl = document.getElementById('displayText');
-      const defaultTextEl = document.getElementById('defaultText');
+      const timeTopRight = document.getElementById('timeTopRight');
+      const defaultText = document.getElementById('defaultText');
+      const timeCenter = document.getElementById('timeCenter');
+      const bouncingText = document.getElementById('bouncingText');
 
       let x = 100;
       let y = 100;
-      let dx = 0.8;  // slower horizontal speed
-      let dy = 0.5;  // slower vertical speed
+      let dx = 0.8;
+      let dy = 0.5;
       let bounceId;
 
       function bounce() {
         const width = window.innerWidth;
         const height = window.innerHeight;
-        const rect = defaultTextEl.getBoundingClientRect();
+        const rect = bouncingText.getBoundingClientRect();
         const elemWidth = rect.width;
         const elemHeight = rect.height;
+
+        const timeRect = timeCenter.getBoundingClientRect();
 
         x += dx;
         y += dy;
@@ -98,25 +159,54 @@
           y += dy;
         }
 
-        defaultTextEl.style.left = x + 'px';
-        defaultTextEl.style.top = y + 'px';
+        const buffer = 8;
+        if (
+          x + elemWidth > timeRect.left - buffer &&
+          x < timeRect.right + buffer &&
+          y + elemHeight > timeRect.top - buffer &&
+          y < timeRect.bottom + buffer
+        ) {
+          if (x + elemWidth - dx <= timeRect.left || x - dx >= timeRect.right) {
+            dx = -dx;
+            x += dx;
+          }
+          if (y + elemHeight - dy <= timeRect.top || y - dy >= timeRect.bottom) {
+            dy = -dy;
+            y += dy;
+          }
+        }
+
+        bouncingText.style.left = x + 'px';
+        bouncingText.style.top = y + 'px';
 
         bounceId = requestAnimationFrame(bounce);
       }
+
+      function refreshTime() {
+        const currentTime = updateTime();
+        timeTopRight.innerText = currentTime;
+        timeCenter.innerText = currentTime;
+      }
+      setInterval(refreshTime, 1000);
+      refreshTime();
 
       onValue(textRef, (snapshot) => {
         const val = snapshot.val();
         if (val && val.trim().length > 0) {
           displayTextEl.style.display = 'block';
-          defaultTextEl.style.display = 'none';
+          timeTopRight.style.display = 'block';
+          defaultText.style.display = 'block';
+          timeCenter.style.display = 'none';
+          bouncingText.style.display = 'none';
           displayTextEl.innerText = val;
-          if (bounceId) {
-            cancelAnimationFrame(bounceId);
-            bounceId = null;
-          }
+          cancelAnimationFrame(bounceId);
+          bounceId = null;
         } else {
           displayTextEl.style.display = 'none';
-          defaultTextEl.style.display = 'block';
+          timeTopRight.style.display = 'none';
+          defaultText.style.display = 'none';
+          timeCenter.style.display = 'block';
+          bouncingText.style.display = 'block';
           if (!bounceId) {
             bounceId = requestAnimationFrame(bounce);
           }
@@ -126,11 +216,20 @@
   </script>
 </head>
 <body>
-  <div id="displayText">(Loading...)</div>
+  <div id="timeTopRight"></div>
 
   <div id="defaultText">
     <div id="dhs">DHS</div>
     <div id="robotics">Robotics</div>
+  </div>
+
+  <div id="displayText">(Loading...)</div>
+
+  <div id="timeCenter"></div>
+
+  <div id="bouncingText">
+    <div id="dhsBounce">DHS</div>
+    <div id="roboticsBounce">Robotics</div>
   </div>
 </body>
 </html>
